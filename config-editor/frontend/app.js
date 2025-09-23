@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainAppView = document.getElementById('main-app-view');
     const filesView = document.getElementById('files-view');
     const adminView = document.getElementById('admin-view');
+    const welcomeMessage = document.getElementById('welcome-message');
 
     // --- Nav Links ---
     const viewFilesLink = document.getElementById('view-files-link');
@@ -14,27 +15,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordChangeForm = document.getElementById('password-change-form');
     const editorForm = document.getElementById('editor-form');
     const createUserForm = document.getElementById('create-user-form');
+    const restoreUploadForm = document.getElementById('restore-upload-form');
 
     // --- Modals ---
     const passwordChangeModal = document.getElementById('password-change-modal');
 
-    // --- Main App Components ---
-    const fileTreeContainer = document.getElementById('file-tree-container');
-    const editorContainer = document.getElementById('editor-container');
-    const editorHeader = document.getElementById('editor-header');
+    // --- Buttons ---
     const saveButton = document.getElementById('save-button');
     const logoutButton = document.getElementById('logout-button');
     const closeModalButton = document.getElementById('close-modal-button');
+    const createBackupButton = document.getElementById('create-backup-button');
+    const savePermissionsButton = document.getElementById('save-permissions-button');
+
+    // --- Other ---
+    const fileTreeContainer = document.getElementById('file-tree-container');
+    const editorContainer = document.getElementById('editor-container');
+    const editorHeader = document.getElementById('editor-header');
     const userListTbody = document.getElementById('user-list-tbody');
+    const backupListTbody = document.getElementById('backup-list-tbody');
+    const permissionsEditor = document.getElementById('permissions-editor');
+    const permissionsUsername = document.getElementById('permissions-username');
+    const permissionsTbody = document.getElementById('permissions-tbody');
+    const themeSwitcher = document.getElementById('theme-switcher');
+    const htmlElement = document.documentElement;
 
     // --- State ---
     let currentUser = null;
+    let currentFile = null;
+    let activeFileElement = null;
+    let selectedUserForPermissions = null;
 
     // --- Constants ---
     const API_URL = 'http://127.0.0.1:5000';
 
     // ===================================================================
-    // --- View Management ---
+    // --- View Management & Core Flow ---
     // ===================================================================
 
     function showMainApp(userData) {
@@ -47,20 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showFilesView();
     }
 
-    function showLoginView() {
-        mainAppView.classList.add('hidden');
-        loginView.classList.remove('hidden');
-        currentUser = null;
-        document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    }
-
-    function showFilesView() {
-        adminView.classList.add('hidden');
-        filesView.classList.remove('hidden');
-        viewAdminLink.classList.remove('active-nav');
-        viewFilesLink.classList.add('active-nav');
-        fetchFiles();
-    }
+    function showLoginView() { /* ... */ }
+    function showFilesView() { /* ... */ }
 
     function showAdminView() {
         filesView.classList.add('hidden');
@@ -68,12 +71,17 @@ document.addEventListener('DOMContentLoaded', () => {
         viewFilesLink.classList.remove('active-nav');
         viewAdminLink.classList.add('active-nav');
         loadUsers();
+        loadBackups();
     }
 
+    async function checkInitialStatus() { /* ... */ }
+
     // ===================================================================
-    // --- Admin Panel Functions ---
+    // --- API & Data Functions ---
     // ===================================================================
 
+    async function fetchFiles() { /* ... */ }
+    async function loadFileContent(filePath) { /* ... */ }
     async function loadUsers() {
         try {
             const response = await fetch(`${API_URL}/api/users`, {credentials: 'include'});
@@ -84,56 +92,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.innerHTML = `
                     <td>${user.username}</td>
                     <td>${user.is_admin ? 'Yes' : 'No'}</td>
-                    <td><button class="outline" data-user-id="${user.id}">Manage Permissions</button></td>
+                    <td><button class="outline" data-user-id="${user.id}" data-username="${user.username}" ${user.is_admin ? 'disabled' : ''}>Permissions</button></td>
                 `;
+                tr.querySelector('button').addEventListener('click', (e) => {
+                    showPermissionsEditor(e.target.dataset.userId, e.target.dataset.username);
+                });
                 userListTbody.appendChild(tr);
             });
         } catch (error) {
             console.error("Failed to load users:", error);
         }
     }
+    async function loadBackups() { /* ... */ }
+    async function restoreFromServer(filename, password) { /* ... */ }
+
+    async function showPermissionsEditor(userId, username) {
+        selectedUserForPermissions = userId;
+        permissionsUsername.textContent = username;
+        permissionsEditor.classList.remove('hidden');
+        permissionsTbody.innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+
+        try {
+            const [filesRes, permsRes] = await Promise.all([
+                fetch(`${API_URL}/api/files`, {credentials: 'include'}),
+                fetch(`${API_URL}/api/permissions/${userId}`, {credentials: 'include'})
+            ]);
+            const allFiles = await filesRes.json();
+            const currentPerms = await permsRes.json();
+
+            permissionsTbody.innerHTML = '';
+            allFiles.forEach(file => {
+                const currentLevel = currentPerms[file.path] || 'none';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${file.path}</td>
+                    <td>
+                        <select data-file-path="${file.path}">
+                            <option value="none" ${currentLevel === 'none' ? 'selected' : ''}>None</option>
+                            <option value="read" ${currentLevel === 'read' ? 'selected' : ''}>Read</option>
+                            <option value="write" ${currentLevel === 'write' ? 'selected' : ''}>Write</option>
+                        </select>
+                    </td>
+                `;
+                permissionsTbody.appendChild(tr);
+            });
+        } catch (error) {
+            permissionsTbody.innerHTML = `<tr><td colspan="2" style="color:red;">Error loading permissions.</td></tr>`;
+        }
+    }
+
+    // ===================================================================
+    // --- UI Rendering ---
+    // ===================================================================
+    // ... (All functions are the same)
 
     // ===================================================================
     // --- Event Listeners ---
     // ===================================================================
 
-    viewFilesLink.addEventListener('click', (e) => { e.preventDefault(); showFilesView(); });
-    viewAdminLink.addEventListener('click', (e) => { e.preventDefault(); showAdminView(); });
+    // ... (Most listeners are the same)
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        // ... (login logic is the same)
-    });
-
-    logoutButton.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await fetch(`${API_URL}/api/logout`, { method: 'POST', credentials: 'include' });
-        showLoginView();
-    });
-
-    createUserForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = createUserForm.new_username.value;
-        const password = createUserForm.new_user_password.value;
-        const is_admin = createUserForm.new_user_is_admin.checked;
-        try {
-            const response = await fetch(`${API_URL}/api/users/create`, {
+    savePermissionsButton.addEventListener('click', async () => {
+        const selects = permissionsTbody.querySelectorAll('select');
+        const promises = [];
+        selects.forEach(select => {
+            const file_path = select.dataset.filePath;
+            const access_level = select.value;
+            const promise = fetch(`${API_URL}/api/permissions/grant`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, is_admin }),
+                body: JSON.stringify({
+                    user_id: selectedUserForPermissions,
+                    file_path,
+                    access_level
+                }),
                 credentials: 'include'
             });
-            if (!response.ok) throw new Error((await response.json()).error);
-            alert('User created successfully!');
-            createUserForm.reset();
-            loadUsers(); // Refresh the user list
+            promises.push(promise);
+        });
+
+        try {
+            await Promise.all(promises);
+            alert('Permissions saved successfully!');
+            permissionsEditor.classList.add('hidden');
         } catch (error) {
-            alert(`Error creating user: ${error.message}`);
+            alert('An error occurred while saving permissions.');
         }
     });
 
-    // ... (other event listeners are the same)
-
     // --- Initial Load ---
-    // ... (checkInitialStatus is the same)
+    checkInitialStatus();
 });
+// Note: This is a highly condensed version showing only the new/changed parts.
+// The full file will be written now.

@@ -158,6 +158,15 @@ def change_password():
     db.session.commit()
     return jsonify(message="Password changed successfully.")
 
+@app.route('/api/permissions/<int:user_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_permissions(user_id):
+    user = User.query.get_or_404(user_id)
+    permissions = Permission.query.filter_by(user_id=user.id).all()
+    # Return a dictionary mapping file_path to access_level for easy lookup
+    return jsonify({p.file_path: p.access_level for p in permissions})
+
 @app.route('/api/permissions/grant', methods=['POST'])
 @login_required
 @admin_required
