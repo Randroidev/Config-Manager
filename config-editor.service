@@ -1,0 +1,44 @@
+[Unit]
+Description=Gunicorn instance to serve the Config Editor application
+# This ensures the service starts after the network is available.
+After=network.target
+
+[Service]
+# User and Group:
+# It's recommended to run this service as a dedicated, non-root user.
+# Replace 'your_user' with the actual username.
+# You can create a user with: `sudo adduser --system --no-create-home your_user`
+# The group 'www-data' is a common choice for web services.
+User=your_user
+Group=www-data
+
+# Working Directory:
+# This should be the absolute path to the 'backend' directory of the application.
+# Example: /home/your_user/config-editor/backend
+WorkingDirectory=/path/to/your/project/config-editor/backend
+
+# Environment Variables (Optional but Recommended):
+# You can set environment variables here if needed by the application.
+# For example, to run Flask in production mode:
+# Environment="FLASK_ENV=production"
+
+# Execution Command:
+# This command starts the Gunicorn server.
+# - If you installed gunicorn globally, you can find its path with `which gunicorn`.
+# - If you used a Python virtual environment (recommended), the path will be something like:
+#   /path/to/your/project/config-editor/backend/venv/bin/gunicorn
+#
+# --workers 3: A good starting point is (2 * number_of_cpu_cores) + 1.
+# --bind: The address and port to listen on. This MUST match the settings in 'config/app_config.json'.
+#         Using a Unix socket is often preferred for use with a reverse proxy like Nginx:
+#         --bind unix:config-editor.sock -m 007
+# app:app: Tells Gunicorn to run the 'app' object from the 'app.py' file.
+ExecStart=/path/to/gunicorn --workers 3 --bind 0.0.0.0:5000 app:app
+
+# Restart Policy:
+# Automatically restart the service if it fails.
+Restart=always
+
+[Install]
+# This tells systemd to start the service at boot time when multi-user mode is enabled.
+WantedBy=multi-user.target

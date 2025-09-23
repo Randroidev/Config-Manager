@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.venv
+env/
+venv/
+
+# Backend venv
+backend/venv/
+
+# Database
+app.db
+migrations/
+
+# Backups
+backups/

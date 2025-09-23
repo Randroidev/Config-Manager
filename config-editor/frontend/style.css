@@ -1,0 +1,75 @@
+:root {
+    --spacing: 1rem;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+}
+
+nav {
+    flex-shrink: 0;
+}
+
+.main-layout {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+#file-tree-panel {
+    width: 250px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--pico-muted-border-color);
+    padding: var(--spacing);
+    overflow-y: auto;
+}
+
+#file-tree-container ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+#file-tree-container li a {
+    display: block;
+    padding: 0.25rem 0.5rem;
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+#file-tree-container li a:hover {
+    background-color: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+}
+
+#file-tree-container li a.active {
+    background-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+}
+
+
+#editor-panel {
+    flex-grow: 1;
+    padding: var(--spacing);
+    overflow-y: auto;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#editor-form fieldset {
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+}
+
+#editor-form label {
+    font-weight: bold;
+}
+
+#editor-actions {
+    margin-top: 1.5rem;
+}

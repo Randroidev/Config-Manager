@@ -1,0 +1,14 @@
+{
+  "service": {
+    "name": "data-processor",
+    "version": "9.9.9",
+    "logging": {
+      "level": "DEBUG",
+      "file": "/var/log/data-processor.log"
+    }
+  },
+  "retries": {
+    "count": 5,
+    "delay_ms": 200
+  }
+}

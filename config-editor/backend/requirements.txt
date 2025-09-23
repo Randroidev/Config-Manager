@@ -1,0 +1,8 @@
+Flask
+Flask-Cors
+PyYAML
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-Login
+cryptography
+gunicorn

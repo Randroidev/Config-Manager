@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Editor</title>
+    <!-- Pico.css for modern styling -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>Config Editor</strong></li>
+        </ul>
+        <ul>
+            <li><a href="#" id="theme-switcher" data-theme="light">Switch to Dark</a></li>
+        </ul>
+    </nav>
+
+    <div class="container-fluid main-layout">
+        <aside id="file-tree-panel">
+            <header>
+                <h6>Configuration Files</h6>
+            </header>
+            <div id="file-tree-container">
+                <!-- File tree will be generated here by JS -->
+                <p>Loading files...</p>
+            </div>
+        </aside>
+
+        <main id="editor-panel">
+            <div id="welcome-message">
+                <h2>Welcome</h2>
+                <p>Select a file from the left panel to begin editing.</p>
+            </div>
+            <div id="editor-container" class="hidden">
+                <h3 id="editor-header"></h3>
+                <form id="editor-form">
+                    <!-- Form fields will be generated here by JS -->
+                </form>
+                <div id="editor-actions">
+                    <button id="save-button" class="hidden">Save Changes</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

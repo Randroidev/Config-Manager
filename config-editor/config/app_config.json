@@ -1,0 +1,7 @@
+{
+    "server_host": "0.0.0.0",
+    "server_port": 5000,
+    "config_files_directory": "../config",
+    "database_path": "app.db",
+    "backup_directory": "../backups"
+}
