@@ -12,6 +12,7 @@ from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+import click
 
 from parsers import get_parser
 import crypto
@@ -23,23 +24,28 @@ app.config['SECRET_KEY'] = 'a-very-secret-key-that-should-be-changed'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_DIR = os.path.normpath(os.path.join(APP_DIR, '../config'))
-SUPPORTED_EXTENSIONS = ['.ini', '.cfg', '.conf', '.config', '.xml', '.yml', '.yaml', '.json']
+# A default config path used to find the config file itself
+DEFAULT_CONFIG_DIR = os.path.normpath(os.path.join(APP_DIR, '../config'))
 
-# Load app_config.json from within the CONFIG_DIR
+# Load app_config.json
 try:
-    with open(os.path.join(CONFIG_DIR, 'app_config.json')) as f:
+    with open(os.path.join(DEFAULT_CONFIG_DIR, 'app_config.json')) as f:
         app_config = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError):
     app_config = {
         "server_host": "0.0.0.0", "server_port": 5000,
+        "config_files_directory": "../config",
         "database_path": "app.db",
         "backup_directory": "../backups"
     }
 
 # --- Path and DB Configuration ---
+# Use the loaded config to define the actual paths
+CONFIG_DIR = os.path.normpath(os.path.join(APP_DIR, app_config['config_files_directory']))
 DB_PATH = os.path.normpath(os.path.join(APP_DIR, app_config['database_path']))
 BACKUP_DIR = os.path.normpath(os.path.join(APP_DIR, app_config['backup_directory']))
+SUPPORTED_EXTENSIONS = ['.ini', '.cfg', '.conf', '.config', '.xml', '.yml', '.yaml', '.json']
+
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 
 # --- Extensions Initialization ---
@@ -54,6 +60,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    must_change_password = db.Column(db.Boolean, default=True, nullable=False)
     permissions = db.relationship('Permission', backref='user', lazy='dynamic')
 
     def set_password(self, password): self.password_hash = generate_password_hash(password)
@@ -92,7 +99,11 @@ def login():
     user = User.query.filter_by(username=data.get('username')).first()
     if user and user.check_password(data.get('password')):
         login_user(user, remember=True)
-        return jsonify(username=user.username, is_admin=user.is_admin)
+        return jsonify(
+            username=user.username,
+            is_admin=user.is_admin,
+            must_change_password=user.must_change_password
+        )
     return jsonify(error="Invalid username or password."), 401
 
 @app.route('/api/logout', methods=['POST'])
@@ -143,6 +154,7 @@ def change_password():
         return jsonify(error="Invalid current password."), 401
 
     current_user.set_password(new_password)
+    current_user.must_change_password = False
     db.session.commit()
     return jsonify(message="Password changed successfully.")
 
@@ -203,10 +215,10 @@ def create_backup():
         f.write(encrypted_data)
     return jsonify(message="Backup saved to server.", filename=backup_filename), 201
 
-@app.route('/api/backups/restore', methods=['POST'])
+@app.route('/api/backups/restore_from_upload', methods=['POST'])
 @login_required
 @admin_required
-def restore_backup():
+def restore_backup_from_upload():
     password = request.form.get('password')
     if not password: return jsonify(error="Admin password is required"), 400
     admin_user = User.query.filter_by(username=current_user.username).first()
@@ -222,7 +234,33 @@ def restore_backup():
         tar_stream = io.BytesIO(decrypted_data)
         with tarfile.open(fileobj=tar_stream, mode='r:gz') as tar:
             tar.extractall(path=os.path.dirname(CONFIG_DIR))
-        return jsonify(message="Restore successful.")
+        return jsonify(message="Restore from upload successful.")
+    except Exception as e:
+        return jsonify(error=f"Restore failed: {repr(e)}"), 500
+
+@app.route('/api/backups/restore_from_server', methods=['POST'])
+@login_required
+@admin_required
+def restore_backup_from_server():
+    data = request.get_json()
+    password = data.get('password')
+    filename = data.get('filename')
+    if not password or not filename: return jsonify(error="Filename and admin password are required"), 400
+
+    admin_user = User.query.filter_by(username=current_user.username).first()
+    if not admin_user.check_password(password): return jsonify(error="Invalid admin password."), 401
+
+    backup_path = os.path.normpath(os.path.join(BACKUP_DIR, filename))
+    if not os.path.isfile(backup_path): return jsonify(error="Backup file not found on server."), 404
+
+    try:
+        with open(backup_path, 'rb') as f:
+            encrypted_data = f.read()
+        decrypted_data = crypto.decrypt(encrypted_data, password)
+        tar_stream = io.BytesIO(decrypted_data)
+        with tarfile.open(fileobj=tar_stream, mode='r:gz') as tar:
+            tar.extractall(path=os.path.dirname(CONFIG_DIR))
+        return jsonify(message="Restore from server successful.")
     except Exception as e:
         return jsonify(error=f"Restore failed: {repr(e)}"), 500
 
@@ -289,7 +327,19 @@ def file_content():
         # This catches parsing errors from the read() methods
         return jsonify(status="parse_error", error=str(e)), 400
 
-if __name__ == '__main__':
-    # Note: DB initialization should be done manually via `flask db` commands
-    # in a production setup.
-    app.run(host=app_config.get('server_host', '0.0.0.0'), port=app_config.get('server_port', 5000), debug=True)
+# --- CLI Commands for Setup ---
+@app.cli.command("seed")
+def seed_db():
+    """Seeds the database with an initial admin user."""
+    if User.query.filter_by(username='admin').first():
+        click.echo('Admin user already exists.')
+    else:
+        admin = User(
+            username='admin',
+            is_admin=True,
+            must_change_password=True
+        )
+        admin.set_password('admin')
+        db.session.add(admin)
+        db.session.commit()
+        click.echo('Admin user created successfully (password: admin).')
