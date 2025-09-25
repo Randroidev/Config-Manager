@@ -1,0 +1,13 @@
+# Flask-related
+Flask
+Werkzeug
+gunicorn
+
+# Configuration and Data
+PyYAML
+
+# System Authentication
+python-pam
+
+# Cryptography for Backups
+cryptography

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Initial Setup{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <form method="post" class="card">
+        <h2>Initial Setup</h2>
+        <p>Welcome to Config Editor. Please set up the initial administrator password and the directory to manage.</p>
+
+        <div class="form-group">
+            <label for="password">New Admin Password</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password_confirm">Confirm Password</label>
+            <input type="password" id="password_confirm" name="password_confirm" required>
+        </div>
+
+        <div class="form-group">
+            <label for="managed_dir">Managed Configs Directory</label>
+            <input type="text" id="managed_dir" name="managed_dir" value="/etc/example_configs/" required>
+            <small>Enter the absolute path to the directory containing configuration files you want to manage.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Complete Setup</button>
+    </form>
+</div>
+{% endblock %}
