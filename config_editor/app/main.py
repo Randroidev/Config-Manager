@@ -2,8 +2,8 @@ import os
 import yaml
 import pam
 import hashlib
-from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash
+from .decorators import login_required, setup_required
 
 # --- Constants ---
 CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'config.yaml'))
@@ -20,30 +20,9 @@ def load_config():
     except (FileNotFoundError, yaml.YAMLError) as e:
         raise SystemExit(f"FATAL: Could not load or parse config.yaml. Error: {e}")
 
-# Загружаем конфигурацию и сливаем ее с основной конфигурацией Flask
 app_config = load_config()
 app.config.update(app_config)
 app.config['SECRET_KEY'] = app.config['security'].get('secret_key') or os.urandom(32)
-
-
-# --- Decorators for Authentication & Setup ---
-def setup_required(f):
-    """Redirects to setup page if initial setup is not complete."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not app.config['security']['initial_setup_complete']:
-            return redirect(url_for('setup'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def login_required(f):
-    """Redirects to login page if user is not logged in."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'username' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 # --- User & Password Utilities ---
@@ -52,7 +31,6 @@ def update_config_file(new_config_data):
     try:
         with open(CONFIG_PATH, 'w') as f:
             yaml.dump(new_config_data, f, default_flow_style=False, sort_keys=False)
-        # Обновляем конфигурацию в работающем приложении
         app.config.update(new_config_data)
     except IOError as e:
         flash(f"Critical error updating config file: {e}", "error")
@@ -77,7 +55,6 @@ def setup():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
-        # ... (логика настройки остается прежней)
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
         managed_dir = request.form.get('managed_dir')
@@ -98,7 +75,6 @@ def setup():
         new_salt = os.urandom(16)
         new_password_hash = hash_password(password, new_salt)
 
-        # Создаем новый объект конфигурации для записи в файл
         current_config_data = load_config()
         current_config_data['security']['secret_key'] = new_secret_key
         current_config_data['security']['password_hash_salt'] = new_salt.hex()
@@ -146,13 +122,11 @@ def logout():
 
 
 # --- РЕГИСТРАЦИЯ API ---
-# Импортируем и регистрируем Blueprint в самом конце, чтобы избежать циклических зависимостей.
 from .api import api_bp
 app.register_blueprint(api_bp)
 
 
 if __name__ == '__main__':
-    # Это для разработки. В продакшене используется Gunicorn.
     app.run(
         host=app.config['server']['host'],
         port=app.config['server']['port'],
