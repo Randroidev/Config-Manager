@@ -73,3 +73,14 @@ nav {
 #editor-actions {
     margin-top: 1.5rem;
 }
+
+/* Permission-based styling for file tree */
+a.access-read {
+    color: var(--pico-secondary);
+}
+
+a.access-none {
+    color: var(--pico-muted-color);
+    pointer-events: none; /* Make it unclickable */
+    text-decoration: line-through;
+}

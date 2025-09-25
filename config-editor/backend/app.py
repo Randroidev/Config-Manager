@@ -284,14 +284,17 @@ def get_files():
         if relative_root == '.': relative_root = ''
         for file in files:
             if any(file.endswith(ext) for ext in SUPPORTED_EXTENSIONS):
-                all_files.append({'name': file, 'path': os.path.join(relative_root, file), 'type': 'file'})
+                all_files.append({'name': file, 'path': os.path.join(relative_root, file)})
 
     if current_user.is_admin:
-        return jsonify(sorted(all_files, key=lambda x: x['path']))
+        for file in all_files:
+            file['access_level'] = 'write'
     else:
-        allowed_paths = {p.file_path for p in current_user.permissions}
-        allowed_files = [f for f in all_files if f['path'] in allowed_paths]
-        return jsonify(sorted(allowed_files, key=lambda x: x['path']))
+        user_perms = {p.file_path: p.access_level for p in current_user.permissions}
+        for file in all_files:
+            file['access_level'] = user_perms.get(file['path'], 'none')
+
+    return jsonify(sorted(all_files, key=lambda x: x['path']))
 
 
 @app.route('/api/files/content', methods=['GET', 'POST'])
