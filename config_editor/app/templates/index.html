@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Config Editor{% endblock %}
+
+{% block content %}
+<header class="main-header">
+    <h1>Config Editor</h1>
+    <div class="header-controls">
+        <span>Welcome, <strong>{{ session.username }}</strong>!</span>
+        <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+        <button id="theme-toggle" class="btn">Toggle Theme</button>
+    </div>
+</header>
+
+<div class="main-layout">
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <h2>Files</h2>
+            <button id="refresh-tree" class="btn-icon" title="Refresh Tree">&#x21bb;</button>
+        </div>
+        <div id="file-tree">
+            <!-- File tree will be loaded here by JavaScript -->
+            <div class="loader">Loading...</div>
+        </div>
+    </aside>
+    <main id="main-content">
+        <div id="editor-space">
+            <div class="placeholder">Select a file from the tree to begin editing.</div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}
