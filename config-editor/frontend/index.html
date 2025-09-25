@@ -48,108 +48,103 @@
                     <header>
                         <h6>Configuration Files</h6>
                     </header>
-                <div id="file-tree-container"></div>
-            </aside>
+                    <div id="file-tree-container"></div>
+                </aside>
 
-            <main id="editor-panel">
-                <div id="welcome-message">
-                    <h2>Welcome</h2>
-                    <p>Select a file from the left panel to begin editing.</p>
-                </div>
-                <div id="editor-container" class="hidden">
-                    <h3 id="editor-header"></h3>
-                    <form id="editor-form"></form>
-                    <div id="editor-actions">
-                        <button id="save-button" class="hidden">Save Changes</button>
+                <main id="editor-panel">
+                    <div id="welcome-message">
+                        <h2>Welcome</h2>
+                        <p>Select a file from the left panel to begin editing.</p>
+                    </div>
+                    <div id="editor-container" class="hidden">
+                        <h3 id="editor-header"></h3>
+                        <form id="editor-form"></form>
+                        <div id="editor-actions">
+                            <button id="save-button" class="hidden">Save Changes</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Admin View (Initially Hidden) -->
+        <div id="admin-view" class="container hidden">
+            <h2>Admin Panel</h2>
+            <section>
+                <h3>User Management</h3>
+                <div class="grid">
+                    <div>
+                        <h4>Users</h4>
+                        <table id="user-list-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Admin</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-list-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h4>Create New User</h4>
+                        <form id="create-user-form">
+                            <label for="new_username">Username</label>
+                            <input type="text" id="new_username" name="new_username" required>
+                            <label for="new_user_password">Password</label>
+                            <input type="password" id="new_user_password" name="new_user_password" required>
+                            <label>
+                                <input type="checkbox" id="new_user_is_admin" name="new_user_is_admin">
+                                Is Admin
+                            </label>
+                            <button type="submit">Create User</button>
+                        </form>
                     </div>
                 </div>
-            </main>
+                <div id="permissions-editor" class="hidden">
+                    <h4>Permissions for <span id="permissions-username"></span></h4>
+                    <table id="permissions-table">
+                        <thead>
+                            <tr>
+                                <th>File Path</th>
+                                <th>Access Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permissions-tbody"></tbody>
+                    </table>
+                    <button id="save-permissions-button">Save All Permissions</button>
+                </div>
+            </section>
+            <section>
+                <h3>Backup & Restore</h3>
+                <div class="grid">
+                    <div>
+                        <h4>Create & Restore from Upload</h4>
+                        <button id="create-backup-button">Create New Backup</button>
+                        <hr>
+                        <form id="restore-upload-form">
+                            <label for="backup-file-upload">Restore from file:</label>
+                            <input type="file" id="backup-file-upload" name="backup-file-upload" required>
+                            <label for="restore-upload-password">Admin Password</label>
+                            <input type="password" id="restore-upload-password" required>
+                            <button type="submit">Upload and Restore</button>
+                        </form>
+                    </div>
+                    <div>
+                        <h4>Available Backups on Server</h4>
+                        <table id="backup-list-table">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="backup-list-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </div>
-    </div>
-
-    <!-- Admin View (Initially Hidden) -->
-    <div id="admin-view" class="container hidden">
-        <h2>Admin Panel</h2>
-        <section>
-            <h3>User Management</h3>
-            <div class="grid">
-                <div>
-                    <h4>Users</h4>
-                    <table id="user-list-table">
-                        <thead>
-                            <tr>
-                                <th>Username</th>
-                                <th>Admin</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-list-tbody">
-                            <!-- User rows will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-                <div>
-                    <h4>Create New User</h4>
-                    <form id="create-user-form">
-                        <label for="new_username">Username</label>
-                        <input type="text" id="new_username" name="new_username" required>
-                        <label for="new_user_password">Password</label>
-                        <input type="password" id="new_user_password" name="new_user_password" required>
-                        <label>
-                            <input type="checkbox" id="new_user_is_admin" name="new_user_is_admin">
-                            Is Admin
-                        </label>
-                        <button type="submit">Create User</button>
-                    </form>
-                </div>
-            </div>
-            <div id="permissions-editor" class="hidden">
-                <h4>Permissions for <span id="permissions-username"></span></h4>
-                <table id="permissions-table">
-                    <thead>
-                        <tr>
-                            <th>File Path</th>
-                            <th>Access Level</th>
-                        </tr>
-                    </thead>
-                    <tbody id="permissions-tbody">
-                        <!-- Permissions rows will be generated here -->
-                    </tbody>
-                </table>
-                <button id="save-permissions-button">Save All Permissions</button>
-            </div>
-        </section>
-        <section>
-            <h3>Backup & Restore</h3>
-            <div class="grid">
-                <div>
-                    <h4>Create & Restore</h4>
-                    <button id="create-backup-button">Create New Backup</button>
-                    <hr>
-                    <form id="restore-upload-form">
-                        <label for="backup-file-upload">Restore from file:</label>
-                        <input type="file" id="backup-file-upload" name="backup-file-upload" required>
-                        <label for="restore-upload-password">Admin Password</label>
-                        <input type="password" id="restore-upload-password" required>
-                        <button type="submit">Upload and Restore</button>
-                    </form>
-                </div>
-                <div>
-                    <h4>Available Backups on Server</h4>
-                    <table id="backup-list-table">
-                        <thead>
-                            <tr>
-                                <th>Filename</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="backup-list-tbody">
-                            <!-- Backup files will be listed here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
     </div>
 
     <!-- Password Change Modal -->

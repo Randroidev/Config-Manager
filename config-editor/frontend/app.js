@@ -333,25 +333,34 @@ document.addEventListener('DOMContentLoaded', () => {
         inputs.forEach(input => {
             const keys = input.dataset.key.split('.');
             let current = data;
-            keys.forEach((key, index) => {
-                if (index === keys.length - 1) {
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                if (i === keys.length - 1) {
                     let value;
                     if (input.type === 'checkbox') {
                         value = input.checked;
                     } else if (input.type === 'number') {
-                        value = parseFloat(input.value);
+                        value = parseFloat(input.value) || 0;
                     } else {
-                        try { value = JSON.parse(input.value); }
-                        catch (e) { value = input.value; }
+                        try {
+                            value = JSON.parse(input.value);
+                        } catch (e) {
+                            value = input.value;
+                        }
                     }
                     current[key] = value;
                 } else {
                     current[key] = current[key] || {};
                     current = current[key];
                 }
-            });
+            }
         });
-        return data;
+        // The form builder creates a single root object which is what the XML parser expects.
+        // For other formats, they expect the raw inner object.
+        // This is a simplification; a more robust solution would track the format.
+        // For now, we return the whole structure for XML and the inner object for others.
+        const isXml = currentFile && currentFile.toLowerCase().endsWith('.xml');
+        return isXml ? data : data[Object.keys(data)[0]];
     }
 
     // ===================================================================
