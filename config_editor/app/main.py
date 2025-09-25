@@ -8,6 +8,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 # --- Constants ---
 CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data', 'config.yaml'))
 
+# --- Flask App Initialization ---
+app = Flask(__name__)
 
 # --- Configuration Loading ---
 def load_config():
@@ -16,20 +18,12 @@ def load_config():
         with open(CONFIG_PATH, 'r') as f:
             return yaml.safe_load(f)
     except (FileNotFoundError, yaml.YAMLError) as e:
-        # This is a critical error, app cannot start without config
         raise SystemExit(f"FATAL: Could not load or parse config.yaml. Error: {e}")
 
-config = load_config()
-
-
-# --- Flask App Initialization ---
-app = Flask(__name__)
-# Load secret key from config, but handle the case where it's not set yet
-app.config['SECRET_KEY'] = config['security'].get('secret_key') or os.urandom(32)
-
-# Import and register the API blueprint
-from .api import api_bp
-app.register_blueprint(api_bp)
+# Загружаем конфигурацию и сливаем ее с основной конфигурацией Flask
+app_config = load_config()
+app.config.update(app_config)
+app.config['SECRET_KEY'] = app.config['security'].get('secret_key') or os.urandom(32)
 
 
 # --- Decorators for Authentication & Setup ---
@@ -37,7 +31,7 @@ def setup_required(f):
     """Redirects to setup page if initial setup is not complete."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not config['security']['initial_setup_complete']:
+        if not app.config['security']['initial_setup_complete']:
             return redirect(url_for('setup'))
         return f(*args, **kwargs)
     return decorated_function
@@ -53,15 +47,14 @@ def login_required(f):
 
 
 # --- User & Password Utilities ---
-def update_config_file(new_config):
+def update_config_file(new_config_data):
     """Atomically writes the updated configuration back to the file."""
-    global config
     try:
         with open(CONFIG_PATH, 'w') as f:
-            yaml.dump(new_config, f, default_flow_style=False, sort_keys=False)
-        config = new_config # Update in-memory config
+            yaml.dump(new_config_data, f, default_flow_style=False, sort_keys=False)
+        # Обновляем конфигурацию в работающем приложении
+        app.config.update(new_config_data)
     except IOError as e:
-        # Handle file write error
         flash(f"Critical error updating config file: {e}", "error")
 
 def hash_password(password, salt):
@@ -80,10 +73,11 @@ def index():
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     """Initial setup page for setting admin password and managed directory."""
-    if config['security']['initial_setup_complete']:
+    if app.config['security']['initial_setup_complete']:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
+        # ... (логика настройки остается прежней)
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
         managed_dir = request.form.get('managed_dir')
@@ -100,23 +94,20 @@ def setup():
             flash("The specified directory does not exist or is not a directory.", "error")
             return render_template('setup.html')
 
-        # Generate new security credentials
         new_secret_key = os.urandom(32).hex()
         new_salt = os.urandom(16)
         new_password_hash = hash_password(password, new_salt)
 
-        # Update the config object
-        new_config = config.copy()
-        new_config['security']['secret_key'] = new_secret_key
-        new_config['security']['password_hash_salt'] = new_salt.hex()
-        new_config['security']['admin_password_hash'] = new_password_hash
-        new_config['security']['initial_setup_complete'] = True
-        new_config['app_settings']['managed_configs_dir'] = managed_dir
+        # Создаем новый объект конфигурации для записи в файл
+        current_config_data = load_config()
+        current_config_data['security']['secret_key'] = new_secret_key
+        current_config_data['security']['password_hash_salt'] = new_salt.hex()
+        current_config_data['security']['admin_password_hash'] = new_password_hash
+        current_config_data['security']['initial_setup_complete'] = True
+        current_config_data['app_settings']['managed_configs_dir'] = managed_dir
 
-        # Write to file
-        update_config_file(new_config)
+        update_config_file(current_config_data)
 
-        # Update flask app's secret key
         app.config['SECRET_KEY'] = new_secret_key
 
         flash("Setup complete! Please log in with your new password.", "success")
@@ -136,7 +127,6 @@ def login():
             flash("Username and password are required.", "error")
             return render_template('login.html')
 
-        # Use PAM for system user authentication
         p = pam.pam()
         if p.authenticate(username, password):
             session['username'] = username
@@ -147,7 +137,6 @@ def login():
 
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     """Logs the user out."""
@@ -156,10 +145,16 @@ def logout():
     return redirect(url_for('login'))
 
 
+# --- РЕГИСТРАЦИЯ API ---
+# Импортируем и регистрируем Blueprint в самом конце, чтобы избежать циклических зависимостей.
+from .api import api_bp
+app.register_blueprint(api_bp)
+
+
 if __name__ == '__main__':
-    # This is for development only. Use a proper WSGI server in production.
+    # Это для разработки. В продакшене используется Gunicorn.
     app.run(
-        host=config['server']['host'],
-        port=config['server']['port'],
+        host=app.config['server']['host'],
+        port=app.config['server']['port'],
         debug=True
     )

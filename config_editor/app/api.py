@@ -4,7 +4,7 @@ import shlex
 import subprocess
 from flask import Blueprint, jsonify, request, session, current_app
 from .parsers import get_parser
-from .main import login_required, config
+from .main import login_required  # Декоратор все еще нужен
 from .utils.backup_utils import create_backup, restore_from_backup
 
 # --- Constants ---
@@ -37,7 +37,6 @@ def run_privileged_script(command, *args):
             check=True,
             timeout=20
         )
-        # Пытаемся распарсить stdout как JSON
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:
         error_msg = f"Script execution failed with exit code {e.returncode}."
@@ -60,7 +59,7 @@ def get_file_tree():
     """
     Возвращает дерево файлов и каталогов из управляемой директории.
     """
-    managed_dir = config['app_settings']['managed_configs_dir']
+    managed_dir = current_app.config['app_settings']['managed_configs_dir']
     if not managed_dir:
         return jsonify({"error": "Managed config directory is not set."}), 500
 
@@ -82,8 +81,7 @@ def get_file_content():
     if not file_path:
         return jsonify({"error": "File path is required."}), 400
 
-    # Безопасность: убедимся, что путь находится внутри управляемой директории
-    managed_dir = os.path.abspath(config['app_settings']['managed_configs_dir'])
+    managed_dir = os.path.abspath(current_app.config['app_settings']['managed_configs_dir'])
     if not os.path.abspath(file_path).startswith(managed_dir):
         return jsonify({"error": "Access to this path is denied."}), 403
 
@@ -93,7 +91,6 @@ def get_file_content():
 
     content = read_result.get('content', '')
 
-    # Пытаемся распарсить файл
     parser = get_parser(file_path, content)
 
     response = {
@@ -129,7 +126,7 @@ def save_file():
     if not file_path or new_content is None:
         return jsonify({"error": "Path and content are required."}), 400
 
-    managed_dir = os.path.abspath(config['app_settings']['managed_configs_dir'])
+    managed_dir = os.path.abspath(current_app.config['app_settings']['managed_configs_dir'])
     if not os.path.abspath(file_path).startswith(managed_dir):
         return jsonify({"error": "Access to this path is denied."}), 403
 
@@ -146,17 +143,16 @@ def save_file():
 @login_required
 def list_backups():
     """Возвращает список созданных бэкапов."""
-    # Только админ может видеть бэкапы
-    if session.get('username') != config['security']['admin_username']:
+    if session.get('username') != current_app.config['security']['admin_username']:
         return jsonify({"error": "Unauthorized"}), 403
 
-    backup_dir = config['app_settings']['backups_dir']
+    backup_dir = current_app.config['app_settings']['backups_dir']
     if not os.path.isdir(backup_dir):
-        return jsonify([]) # Если папки нет, возвращаем пустой список
+        return jsonify([])
 
     try:
         files = [f for f in os.listdir(backup_dir) if f.endswith('.enc')]
-        files.sort(reverse=True) # Сначала самые новые
+        files.sort(reverse=True)
         return jsonify(files)
     except OSError as e:
         return jsonify({"error": f"Cannot read backup directory: {e}"}), 500
@@ -166,24 +162,13 @@ def list_backups():
 @login_required
 def api_create_backup():
     """Создает новый бэкап всех файлов из управляемой директории."""
-    if session.get('username') != config['security']['admin_username']:
+    if session.get('username') != current_app.config['security']['admin_username']:
         return jsonify({"error": "Unauthorized"}), 403
 
-    # TODO: Добавить возможность выбора файлов для бэкапа из request
+    managed_dir = current_app.config['app_settings']['managed_configs_dir']
+    backup_dir = current_app.config['app_settings']['backups_dir']
+    admin_password_placeholder = current_app.config['security']['admin_username']
 
-    managed_dir = config['app_settings']['managed_configs_dir']
-    backup_dir = config['app_settings']['backups_dir']
-    # Пароль для шифрования нужно получить из безопасного места, а не передавать по API.
-    # В нашем случае, мы его не храним, а используем хеш. Для шифрования нужен сам пароль,
-    # который мы запрашивали при входе. Это усложнение, которое мы пока опустим,
-    # и предположим, что у нас есть доступ к паролю администратора.
-    # В реальном приложении это потребует более сложной логики.
-    # Для скелета мы просто используем имя пользователя как "пароль".
-    # ВНИМАНИЕ: ЭТО НЕБЕЗОПАСНО ДЛЯ ПРОДАкШЕНА!
-    admin_password_placeholder = config['security']['admin_username']
-
-
-    # Собираем все файлы рекурсивно
     all_files = []
     for root, _, files in os.walk(managed_dir):
         for name in files:
@@ -203,7 +188,7 @@ def api_create_backup():
 @login_required
 def api_restore_backup():
     """Восстанавливает файлы из указанного бэкапа."""
-    if session.get('username') != config['security']['admin_username']:
+    if session.get('username') != current_app.config['security']['admin_username']:
         return jsonify({"error": "Unauthorized"}), 403
 
     data = request.get_json()
@@ -211,10 +196,10 @@ def api_restore_backup():
     if not filename:
         return jsonify({"error": "Backup filename is required."}), 400
 
-    backup_dir = config['app_settings']['backups_dir']
+    backup_dir = current_app.config['app_settings']['backups_dir']
     backup_path = os.path.join(backup_dir, filename)
-    managed_dir = config['app_settings']['managed_configs_dir']
-    admin_password_placeholder = config['security']['admin_username'] # См. комментарий выше
+    managed_dir = current_app.config['app_settings']['managed_configs_dir']
+    admin_password_placeholder = current_app.config['security']['admin_username']
 
     result = restore_from_backup(backup_path, admin_password_placeholder, managed_dir)
 
