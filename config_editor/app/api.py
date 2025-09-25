@@ -4,7 +4,7 @@ import shlex
 import subprocess
 from flask import Blueprint, jsonify, request, session, current_app
 from .parsers import get_parser
-from .main import login_required  # Декоратор все еще нужен
+from .decorators import login_required  # ИЗМЕНЕНО: импорт из нового файла
 from .utils.backup_utils import create_backup, restore_from_backup
 
 # --- Constants ---
